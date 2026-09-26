@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "contract:emit": "prisma contract emit",
+    "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],

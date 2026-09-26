@@ -21,6 +21,9 @@ prisma/*.db-journal
 **/.cursor/skills/
 **/.devin/skills/
 
+# Backup database (deploy-production.sh --backup) — berisi data, jangan di-commit
+backups/
+
 # Environment files
 .env
 .env.*

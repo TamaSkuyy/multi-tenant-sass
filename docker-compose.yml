@@ -1,0 +1,47 @@
+# Infrastruktur development multi-tenant-sass.
+#
+#   docker compose up -d --wait     ← nyalakan Postgres & tunggu sehat
+#   docker compose ps               ← cek status
+#   docker compose logs -f postgres ← lihat log
+#   docker compose stop             ← stop (data tetap aman di volume)
+#   docker compose down             ← hapus container (volume tetap)
+#   docker compose down -v          ← HAPUS JUGA DATANYA
+#
+# Kredensial default di bawah sengaja sama dengan DATABASE_URL di
+# multi-tenant-sass-api/.env.example. Mau beda? timpa lewat env var, contoh:
+#   POSTGRES_PORT=5433 docker compose up -d
+# atau simpan di file .env pada folder ini (otomatis dibaca compose, gitignored).
+
+name: multi-tenant-sass
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mts-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-multi_tenant_sass}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: ${TZ:-Asia/Jakarta}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-multi_tenant_sass}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres-data:
+    name: multi-tenant-sass-postgres-data

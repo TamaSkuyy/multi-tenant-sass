@@ -12,6 +12,14 @@ dist/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+# Binding project/branch lokal yang ditulis Prisma CLI (.prisma/local.json)
+.prisma/
+# Skill agent Prisma — di-generate ulang oleh `prisma skills sync` (postinstall)
+# `**/` perlu karena pola berslash di-anchor ke root repo oleh git
+**/.agents/skills/
+**/.claude/skills/
+**/.cursor/skills/
+**/.devin/skills/
 
 # Environment files
 .env
@@ -43,6 +51,7 @@ blob-report/
 
 # Caches
 .cache/
+.npm-cache/
 .eslintcache
 .turbo/
 .vercel/

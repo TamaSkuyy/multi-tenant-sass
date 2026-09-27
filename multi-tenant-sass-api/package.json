@@ -2,9 +2,12 @@
   "name": "multi-tenant-sass-api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
     "contract:emit": "prisma contract emit",
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma skills sync || exit 0"
@@ -15,6 +18,8 @@
   "type": "module",
   "devDependencies": {
     "@prisma/cli-engine": "^0.6.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "prisma": "^8.0.0-rc.17",
     "tsx": "^4.23.15",
@@ -22,6 +27,8 @@
   },
   "dependencies": {
     "@prisma/orm-postgres": "^8.0.0-rc.12",
-    "dotenv": "^18.0.4"
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1"
   }
 }

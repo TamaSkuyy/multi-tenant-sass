@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * Subdomain yang TIDAK dipetakan ke /tenant/<slug> — dipakai aplikasi sendiri
+ * (dashboard, API, admin). Tambahkan di sini sebelum memakai subdomain baru.
+ */
+const RESERVED_SUBDOMAINS = new Set(["www", "app", "api", "admin"]);
+
 // Proxy (dulu `middleware.ts`) — memetakan subdomain ke halaman tenant:
 //   budi.localhost:3000      → /tenant/budi
 //   budi.example.com         → /tenant/budi
@@ -24,6 +30,10 @@ export function proxy(request: NextRequest) {
 
   // Development: <slug>.localhost
   if (parts.length === 2 && parts[1] === "localhost") {
+    if (RESERVED_SUBDOMAINS.has(parts[0])) {
+      return NextResponse.next();
+    }
+
     return NextResponse.rewrite(new URL(`/tenant/${parts[0]}`, request.url));
   }
 
@@ -32,12 +42,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Produksi: <slug>.example.com, kecuali www.
+  // Produksi: <slug>.example.com, kecuali subdomain yang direservasi.
   // Catatan: host dengan TLD multi-bagian (mis. example.co.id) akan
   // menganggap segmen pertama sebagai slug.
   const subdomain = parts[0];
 
-  if (subdomain === "www" || subdomain === "") {
+  if (subdomain === "" || RESERVED_SUBDOMAINS.has(subdomain)) {
     return NextResponse.next();
   }
 

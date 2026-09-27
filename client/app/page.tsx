@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 // Di-inline saat build. Samakan dengan PORT di ../api/.env
@@ -73,16 +74,19 @@ export default function Home() {
         <span className="text-xl font-semibold tracking-wide">
           PortfolioSaaS
         </span>
-        <nav className="flex gap-6 text-sm text-slate-400">
+        <nav className="flex items-center gap-6 text-sm text-slate-400">
           <a href="#features" className="hover:text-white transition-colors">
             Features
           </a>
           <a href="#pricing" className="hover:text-white transition-colors">
             Pricing
           </a>
-          <a href="#docs" className="hover:text-white transition-colors">
-            Docs
-          </a>
+          <Link
+            href="/login"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-slate-200 hover:border-white/20 transition-colors"
+          >
+            Masuk
+          </Link>
         </nav>
       </header>
 

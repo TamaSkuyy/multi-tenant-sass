@@ -14,6 +14,8 @@ type TenantData = {
     slug: string;
     skills?: string[] | null;
     avatarUrl?: string;
+    /** Override per-tenant atas Template.config (diatur dari dashboard). */
+    config?: { sections?: Record<string, boolean> } | null;
   };
   template?: {
     config?: {
@@ -100,6 +102,7 @@ export default async function TenantPage({
   const primary = template?.config?.theme?.primaryColor || "#6366f1";
 
   // Template driven section toggles with safe defaults
+  // Default → template → override per-tenant (diatur dari dashboard).
   const sections = {
     hero: true,
     about: true,
@@ -108,6 +111,7 @@ export default async function TenantPage({
     blog: true,
     contact: true,
     ...(template?.config?.sections ?? {}),
+    ...(tenant.config?.sections ?? {}),
   };
 
   const avatarUrl = tenant.avatarUrl;

@@ -186,25 +186,50 @@ if [[ "$RUN_CLIENT" == 1 ]]; then
 
   CLIENT_ENV="$CLIENT_DIR/.env.local"
 
-  if [[ -f "$CLIENT_ENV" ]] && grep -q "Dibuat otomatis oleh develop.sh" "$CLIENT_ENV" && ! grep -q "localhost:${API_PORT}\"" "$CLIENT_ENV"; then
-    # File ini hasil generate kita sendiri, dan port API berubah → segarkan.
-    info "client/.env.local: port API berubah, file digenerate ulang."
-    rm -f "$CLIENT_ENV"
-  fi
+  if [[ ! -f "$CLIENT_ENV" ]]; then
+    if [[ -f "$CLIENT_DIR/.env.example" ]]; then
+      cp "$CLIENT_DIR/.env.example" "$CLIENT_ENV"
+      ok "client/.env.local dibuat dari .env.example."
+    else
+      printf '# Dibuat otomatis oleh develop.sh\nNEXT_PUBLIC_API_URL="http://localhost:%s"\nAPI_URL="http://localhost:%s"\n' \
+        "$API_PORT" "$API_PORT" > "$CLIENT_ENV"
+      ok "client/.env.local dibuat (API → http://localhost:${API_PORT})."
+    fi
 
-  if [[ -f "$CLIENT_ENV" ]]; then
-    ok "client/.env.local sudah ada (tidak ditimpa)."
+    # AUTH_SECRET acak supaya placeholder di .env.example tidak terpakai di dev.
+    if ! grep -q '^AUTH_SECRET=.\{10,\}' "$CLIENT_ENV"; then
+      AUTH_SECRET_VALUE="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))')"
+      if grep -q '^AUTH_SECRET=' "$CLIENT_ENV"; then
+        sed -i "s#^AUTH_SECRET=.*#AUTH_SECRET=\"$AUTH_SECRET_VALUE\"#" "$CLIENT_ENV"
+      else
+        printf 'AUTH_SECRET="%s"\n' "$AUTH_SECRET_VALUE" >> "$CLIENT_ENV"
+      fi
+      ok "client/.env.local: AUTH_SECRET acak dibuat."
+    fi
   else
-    cat > "$CLIENT_ENV" <<EOF
-# Dibuat otomatis oleh develop.sh — ubah kalau API tidak di localhost.
-NEXT_PUBLIC_API_URL="http://localhost:${API_PORT}"
-API_URL="http://localhost:${API_PORT}"
-EOF
-    ok "client/.env.local dibuat (API → http://localhost:${API_PORT})."
+    ok "client/.env.local sudah ada (tidak ditimpa)."
   fi
 
-  if [[ -f "$CLIENT_ENV" ]] && ! grep -q "localhost:${API_PORT}" "$CLIENT_ENV"; then
-    warn "client/.env.local tidak menyebut :${API_PORT} — pastikan NEXT_PUBLIC_API_URL-nya cocok dengan API."
+  # Sesuaikan URL API saja — jangan sentuh AUTH_SECRET/rahasia lain.
+  if ! grep -q "localhost:${API_PORT}\"" "$CLIENT_ENV"; then
+    sed -i -E \
+      "s#^(NEXT_PUBLIC_API_URL=).*#\\1\"http://localhost:${API_PORT}\"#; s#^(API_URL=).*#\\1\"http://localhost:${API_PORT}\"#" \
+      "$CLIENT_ENV"
+    ok "client/.env.local: URL API disesuaikan ke :${API_PORT}."
+  fi
+
+  # INTERNAL_API_SECRET wajib identik dengan api/.env — samakan otomatis.
+  API_SECRET_VALUE="$(grep -E '^INTERNAL_API_SECRET=' "$API_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d "\"'" | xargs || true)"
+
+  if [[ -n "$API_SECRET_VALUE" ]]; then
+    if grep -q '^INTERNAL_API_SECRET=' "$CLIENT_ENV"; then
+      sed -i "s#^INTERNAL_API_SECRET=.*#INTERNAL_API_SECRET=\"$API_SECRET_VALUE\"#" "$CLIENT_ENV"
+    else
+      printf 'INTERNAL_API_SECRET="%s"\n' "$API_SECRET_VALUE" >> "$CLIENT_ENV"
+    fi
+    ok "client/.env.local: INTERNAL_API_SECRET disinkronkan dengan api/.env."
+  else
+    warn "INTERNAL_API_SECRET belum ada di api/.env — jalankan 'prisma init' pada api/.env.example."
   fi
 fi
 
@@ -236,7 +261,9 @@ if [[ "$RUN_DB" == 1 || "$RUN_API" == 1 ]]; then
 
   if [[ "$MIGRATION_PKGS" -gt 0 ]]; then
     info "Ada $MIGRATION_PKGS paket migration — menerapkan lewat 'prisma db migrate'."
-    in_api npx prisma db migrate --format human
+    # --advance-ref db: tanpa ini ref 'db' tertinggal di migration lama dan
+    # `migration plan` berikutnya akan mem-fork graph (kejadian nyata).
+    in_api npx prisma db migrate --advance-ref db --format human
     ok "Migration terbaru sudah diterapkan (perintah ini idempoten)."
   elif in_api npx prisma db verify --marker-only >/dev/null 2>&1; then
     ok "Database sudah ter-sign & belum ada paket migration — dilewati."

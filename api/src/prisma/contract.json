@@ -212,6 +212,13 @@
                   "kind": "scalar"
                 }
               },
+              "config": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/jsonb@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -323,6 +330,9 @@
                 "bio": {
                   "column": "bio"
                 },
+                "config": {
+                  "column": "config"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -381,6 +391,13 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "passwordHash": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
@@ -413,6 +430,9 @@
                 },
                 "name": {
                   "column": "name"
+                },
+                "passwordHash": {
+                  "column": "passwordHash"
                 }
               },
               "namespaceId": "public",
@@ -569,6 +589,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "config": {
+                  "codecId": "pg/jsonb@1",
+                  "nativeType": "jsonb",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamp-temporal@1",
                   "default": {
@@ -698,6 +723,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
+                },
+                "passwordHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 }
               },
               "foreignKeys": [],
@@ -723,7 +753,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8390746ee68d6604909d2e7fe42f00e588fcccd4f298fa903f648c89013c73c7"
+    "storageHash": "04dcf3cbf6c994aa67976371b8212a304897224189618245bb803842fc5a38ce"
   },
   "execution": {
     "executionHash": "d2e475d2a90084895990cf6140e260b3143ba4afdefd136006db030f1837b383",

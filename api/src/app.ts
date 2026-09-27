@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import authRoutes from "./routes/auth.routes";
 import tenantRoutes from "./routes/tenant.routes";
 
 import { db } from "./prisma/db";
@@ -54,6 +55,7 @@ app.use(
 app.use(express.json());
 
 //---------------------------------------------------------------- routes
+app.use("/api", authRoutes);
 app.use("/api", tenantRoutes);
 
 // ---------------------------------------------------------------- routes

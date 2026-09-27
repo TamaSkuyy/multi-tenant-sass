@@ -107,45 +107,60 @@ Estimasi: **M**
 
 ---
 
-## Fase 1 — Autentikasi (NextAuth v5) + dashboard tenant
+## Fase 1 — Autentikasi (NextAuth v5) + dashboard tenant ✅ SELESAI
 
 **Target:** tenant bisa login, lalu edit portfolio-nya (bio, skills, pilih section) tanpa kehilangan data.
 
-> ⚠️ **Temuan penting:** `@auth/prisma-adapter` **butuh `@prisma/client`**, sedangkan repo ini pakai Prisma 8 contract mode (`@prisma/orm-postgres`) tanpa `@prisma/client`. Jadi **jangan pakai Prisma adapter**. Pakai **JWT session** + simpan `User`/`Account` via `db.orm.public.*` sendiri (endpoint auth di API), atau tulis adapter custom.
+> ⚠️ **Temuan penting:** `@auth/prisma-adapter` **butuh `@prisma/client`**, sedangkan repo ini pakai Prisma 8 contract mode (`@prisma/orm-postgres`). Karena itu **Prisma adapter tidak dipakai**: sesi memakai **JWT** dan verifikasi kredensial dilakukan lewat API Express (pemegang database).
 
-### [ ] 1.1 Model auth di contract
+**Yang dipakai:** provider **Credentials** (email + password, hash `scrypt` bawaan Node — tanpa dependensi tambahan). OAuth belum dipasang karena butuh kredensial pihak ketiga.
 
-- [ ] `User` (`id`, `email @unique`, `name`, `createdAt`), `Tenant.ownerId` FK ke `User.id`
-- [ ] Kalau butuh OAuth: `Account` + `Session` mengikuti skema Auth.js — tapi dengan JWT strategy cukup `User` + `Account` (token OAuth)
-- [ ] Migration + emit seperti biasa
+### [x] 1.1 Model auth di contract
 
-### [ ] 1.2 NextAuth v5 di client
+- [x] `User` + `passwordHash String?` (nullable agar akun OAuth murni tetap valid); `Tenant.ownerId` FK ke `User.id` (dari Fase 0)
+- [x] `Tenant.config Json?` — override section per-tenant (dipakai dashboard)
+- [x] Migration `20260927T1315_phase_1_auth_fields` (2 operasi) + `db verify` lolos
 
-- [ ] `npm --prefix client i next-auth@beta` (peer `next: ^16` ✓ terverifikasi)
-- [ ] `client/auth.ts` → `NextAuth({ session: { strategy: "jwt" }, providers: [...] })`
-- [ ] `client/app/api/auth/[...nextauth]/route.ts` → export handler
-- [ ] `AUTH_SECRET` di `client/.env.local` (jangan commit)
-- [ ] Halaman `client/app/login/page.tsx` + tombol sign-in/sign-out
+### [x] 1.2 NextAuth v5 di client
 
-### [ ] 1.3 Jembatan session → API Express
+- [x] `next-auth@5.0.0-beta.32` (peer `next: ^16` ✓ terverifikasi)
+- [x] `client/auth.ts` — Credentials + `session.strategy: "jwt"`, callback `jwt`/`session` membawa `user.id`
+- [x] `client/app/api/auth/[...nextauth]/route.ts` → export handler
+- [x] `AUTH_SECRET` di `client/.env.local` (digenerate `develop.sh`, tidak di-commit)
+- [x] `client/app/login/page.tsx` (server action `signIn`), `client/app/register/page.tsx`, tombol keluar di dashboard
 
-Pilih satu (rekomendasi: A):
+### [x] 1.3 Jembatan session → API Express (opsi A, disempurnakan)
 
-- [ ] **A. BFF di Next** — `next.config.ts` rewrites `/api/*` → `http://localhost:8080/api/*`; browser hanya bicara ke origin Next (cookie jalan, tanpa CORS). NextAuth mengeluarkan JWT, lalu route handler Next memanggil Express dengan header `Authorization: Bearer <token>`.
-- [ ] **B. Cookie lintas origin** — `fetch(..., { credentials: "include" })` + CORS `credentials: true` + cookie `SameSite=None`. Lebih ribet di dev.
+Rencana awal: `rewrites` + Bearer token. Yang dipakai: **server action + HMAC** — lebih sedikit bagian, tanpa CORS.
 
-- [ ] Di Express: middleware verifikasi token (pakai `jose`, secret sama) → `req.tenantId`
-- [ ] Endpoint baru: `PATCH /api/tenants/me` (update bio/skills/template config) — hanya untuk tenant milik session
-- [ ] `POST /api/tenants` dipindah ke flow onboarding setelah login
+- [x] `client/lib/internal-auth.ts` menandatangani `<subject>.<exp>.<hmac>`; API memverifikasi di `api/src/lib/internal-auth.ts` dengan rahasia yang sama (`INTERNAL_API_SECRET`)
+- [x] Middleware Express: `requireService` (login), `requireUser` (identitas user → `req.userId`), `identifyUser` (opsional)
+- [x] `POST /api/auth/register` (publik, rate-limited) + `POST /api/auth/verify-credentials` (internal-only)
+- [x] `GET`/`PATCH /api/tenants/me` — hanya menyentuh tenant milik user di session
+- [x] Tenant baru dari jalur BFF otomatis dapat `ownerId`; satu akun = satu portfolio (409 kalau sudah ada)
+- [x] `POST /api/tenants` **tetap publik** (form landing page) — sengaja supaya demo signup tetap jalan; jalur dashboard memakai identitas login
 
-### [ ] 1.4 Dashboard
+### [x] 1.4 Dashboard
 
-- [ ] `client/app/dashboard/page.tsx` (di root domain, **bukan** subdomain — lihat catatan 5.1)
-- [ ] Form edit bio/skills + toggle section (`hero`, `about`, `skills`, `projects`, `blog`, `contact`) → `PATCH /api/tenants/me`
-- [ ] Preview link ke `http://<slug>.localhost:3000`
-- [ ] `proxy.ts`: tambahkan **allowlist subdomain reserved** (`www`, `app`, `api`, `admin`) supaya `app.example.com` tidak ikut di-rewrite jadi `/tenant/app`
+- [x] `client/app/dashboard/page.tsx` — session-gated (`redirect("/login")` bila belum login), di root domain
+- [x] Form edit nama/bio/skills + toggle 6 section → server action `updateMyTenant`
+- [x] Akun tanpa portfolio → form `createMyTenant`
+- [x] Link preview ke `/tenant/<slug>` + teks subdomain
+- [x] `proxy.ts`: allowlist subdomain reserved (`www`, `app`, `api`, `admin`)
+- [x] Halaman portfolio menggabungkan `Template.config.sections` + `Tenant.config.sections` (override per-tenant)
 
-**Acceptance:** login → edit bio → refresh → data tetap; logout → dashboard menolak akses; tenant lain tidak bisa PATCH tenant ini (uji 403).
+**Bukti uji end-to-end:**
+
+- register → 201; email duplikat → 409; password <8 → 400 + `details`
+- password salah → 401 yang **tidak** membocorkan apakah email terdaftar
+- `GET /api/auth/session` berisi `user.id` ✓
+- `/dashboard` tanpa cookie → **307 ke `/login`**; dengan cookie → 200 + form edit ✓
+- `PATCH /api/tenants/me` → 200; section `blog` yang dimatikan **hilang** dari halaman portfolio ✓
+- `verify-credentials` tanpa token internal → 401; `PATCH` tanpa identitas → 401
+- `Host: app.localhost:3000` → landing page, bukan `/tenant/app` ✓
+
+**Belum termasuk (lanjutan):** OAuth (GitHub/Google), reset password & verifikasi email, revoke session (JWT tidak bisa dibatalkan — logout hanya menghapus cookie), 2FA, dan rate limit per-akun untuk login (sekarang hanya per-IP di `/register`).
+
 Estimasi: **L**
 
 ---

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 #
-# deploy-production.sh — deploy multi-tenant-sass-api ke production.
+# deploy-production.sh — deploy API (dan client) multi-tenant-sass ke production.
 #
 # Urutan: install deps → emit contract → apply migration → verify schema → seed → build.
 # Flag:
 #   --dry-run     read-only: tampilkan rencana migration + verify, tidak mengubah apa pun
 #   --seed        jalankan `npm run seed` setelah migration (idempoten)
 #   --backup      pg_dump ke backups/ sebelum migration (butuh pg_dump di PATH)
-#   --no-install  lewati npm ci
-#   --no-build    lewati npm run build
+#   --no-install  lewati npm ci (api & client)
+#   --no-build    lewati npm run build (api & client)
+#   --no-client   lewati seluruh langkah client (kalau client di-deploy terpisah)
 #   --yes         lewati prompt konfirmasi (untuk CI)
 #   -h, --help    tampilkan bantuan
 #
@@ -20,7 +21,8 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-API_DIR="${APP_DIR:-$ROOT_DIR/multi-tenant-sass-api}"
+API_DIR="${APP_DIR:-$ROOT_DIR/api}"
+CLIENT_DIR="${CLIENT_APP_DIR:-$ROOT_DIR/client}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 
 DRY_RUN=0
@@ -28,6 +30,7 @@ RUN_SEED=0
 DO_BACKUP=0
 RUN_INSTALL=1
 RUN_BUILD=1
+RUN_CLIENT=1
 ASSUME_YES=0
 
 # ---------------------------------------------------------------- util
@@ -56,6 +59,7 @@ while [[ $# -gt 0 ]]; do
     --backup)     DO_BACKUP=1 ;;
     --no-install) RUN_INSTALL=0 ;;
     --no-build)   RUN_BUILD=0 ;;
+    --no-client)  RUN_CLIENT=0 ;;
     --yes|-y)     ASSUME_YES=1 ;;
     -h|--help)    usage; exit 0 ;;
     *)            die "Opsi tidak dikenal: '$1' (pakai --help)" ;;
@@ -65,6 +69,10 @@ done
 
 # ---------------------------------------------------------------- preflight
 [[ -d "$API_DIR" ]] || die "Folder API tidak ditemukan: $API_DIR"
+
+if [[ "$RUN_CLIENT" == 1 && ! -d "$CLIENT_DIR" ]]; then
+  die "Folder client tidak ditemukan: $CLIENT_DIR (pakai --no-client kalau client di-deploy terpisah)."
+fi
 
 # Tanpa paket migration, `db migrate` menolak (MIGRATION.PATH_UNREACHABLE) dan
 # database produksi yang kosong tidak akan pernah terbentuk. Gagalkan lebih awal
@@ -100,7 +108,8 @@ esac
 
 # -E di set di atas + die eksplisit di sini: trap ERR sendiri tidak menyala
 # untuk kegagalan di dalam subshell, jadi jangan bergantung padanya.
-in_api() { ( cd "$API_DIR" && trap - ERR && "$@" ) || die "Perintah gagal di $API_DIR: $*"; }
+in_api()    { ( cd "$API_DIR"    && trap - ERR && "$@" ) || die "Perintah gagal di $API_DIR: $*"; }
+in_client() { ( cd "$CLIENT_DIR" && trap - ERR && "$@" ) || die "Perintah gagal di $CLIENT_DIR: $*"; }
 
 step "Target deploy"
 info "API dir   : $API_DIR"
@@ -133,12 +142,24 @@ if [[ "$DRY_RUN" == 1 ]]; then
   info "dry-run: dilewati."
 elif [[ "$RUN_INSTALL" == 0 ]]; then
   info "--no-install: dilewati."
-elif [[ -f "$API_DIR/package-lock.json" ]]; then
-  in_api npm ci --no-audit --no-fund
-  ok "npm ci selesai."
 else
-  in_api npm install --no-audit --no-fund
-  ok "npm install selesai."
+  if [[ -f "$API_DIR/package-lock.json" ]]; then
+    in_api npm ci --no-audit --no-fund
+    ok "api: npm ci selesai."
+  else
+    in_api npm install --no-audit --no-fund
+    ok "api: npm install selesai."
+  fi
+
+  if [[ "$RUN_CLIENT" == 1 ]]; then
+    if [[ -f "$CLIENT_DIR/package-lock.json" ]]; then
+      in_client npm ci --no-audit --no-fund
+      ok "client: npm ci selesai."
+    else
+      in_client npm install --no-audit --no-fund
+      ok "client: npm install selesai."
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------- 2. contract emit
@@ -150,7 +171,7 @@ else
   in_api npx prisma contract emit >/dev/null
   ok "contract.json & contract.d.ts ter-emit."
 
-  if [[ -d "$ROOT_DIR/.git" ]] && ! git -C "$ROOT_DIR" diff --quiet -- multi-tenant-sass-api/src/prisma 2>/dev/null; then
+  if [[ -d "$ROOT_DIR/.git" ]] && ! git -C "$ROOT_DIR" diff --quiet -- api/src/prisma 2>/dev/null; then
     warn "Artefak contract BERUBAH setelah emit — berarti yang ter-commit sudah stale."
     warn "Commit ulang src/prisma/contract.json & contract.d.ts supaya deploy berikutnya deterministik."
   else
@@ -208,11 +229,22 @@ if [[ "$DRY_RUN" == 1 ]]; then
   info "dry-run: dilewati."
 elif [[ "$RUN_BUILD" == 0 ]]; then
   info "--no-build: dilewati."
-elif in_api node -e 'const s=require("./package.json").scripts||{}; process.exit(s.build?0:1)'; then
-  in_api npm run build
-  ok "Build selesai."
 else
-  info "Tidak ada script \"build\" — dilewati."
+  if in_api node -e 'const s=require("./package.json").scripts||{}; process.exit(s.build?0:1)'; then
+    in_api npm run build
+    ok "api: build selesai."
+  else
+    info "api: tidak ada script \"build\" — dilewati."
+  fi
+
+  if [[ "$RUN_CLIENT" == 1 ]]; then
+    if in_client node -e 'const s=require("./package.json").scripts||{}; process.exit(s.build?0:1)'; then
+      in_client npm run build
+      ok "client: build selesai."
+    else
+      info "client: tidak ada script \"build\" — dilewati."
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------- ringkasan
@@ -223,5 +255,8 @@ if [[ "$DRY_RUN" == 1 ]]; then
 else
   info "Langkah berikutnya: restart service API (mis. 'npm start', systemd, pm2, atau"
   info "'npx prisma deploy' kalau pakai Prisma Platform)."
+  if [[ "$RUN_CLIENT" == 1 ]]; then
+    info "Client: artefak hasil 'npm run build' siap di-serve ('npm start' / platform hosting)."
+  fi
   info "Kalau ada masalah: 'npx prisma db verify --db \"\$DATABASE_URL\"' + 'docker compose logs'."
 fi

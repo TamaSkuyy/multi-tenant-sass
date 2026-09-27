@@ -56,6 +56,8 @@ blob-report/
 .cache/
 .npm-cache/
 .eslintcache
+# Log dev server dari develop.sh (api + client)
+.dev-logs/
 .turbo/
 .vercel/
 

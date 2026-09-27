@@ -2,26 +2,65 @@
 
 import { useState } from "react";
 
+// Di-inline saat build. Samakan dengan PORT di ../api/.env
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
 export default function Home() {
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [skills, setSkills] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    const res = await fetch("http://localhost:8080/api/tenants", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        bio,
-        skills: skills.split(",").map((skill) => skill.trim()),
-      }),
-    });
+    setError(null);
 
-    const data = await res.json();
-    window.location.href = `http://${data.slug}.localhost:3000`;
+    const parsedSkills = skills
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+
+    if (!name.trim() || !bio.trim() || parsedSkills.length === 0) {
+      setError("Nama, bio, dan minimal satu skill wajib diisi.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/tenants`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          bio,
+          skills: parsedSkills,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        slug?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.slug) {
+        setError(data.error ?? `Gagal membuat portfolio (HTTP ${res.status}).`);
+        return;
+      }
+
+      // Arahkan ke subdomain tenant pada origin yang sama — port mengikuti
+      // halaman ini, jadi tidak ada port yang di-hardcode.
+      const { protocol, hostname, port } = window.location;
+      window.location.href = `${protocol}//${data.slug}.${hostname}${port ? `:${port}` : ""}`;
+    } catch {
+      setError(
+        `Tidak bisa menghubungi API di ${API_URL}. Pastikan server API jalan.`,
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -55,6 +94,7 @@ export default function Home() {
           <input
             type="text"
             placeholder="Your Name"
+            value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-4"
           />
@@ -62,6 +102,7 @@ export default function Home() {
           <textarea
             placeholder="Short Bio"
             rows={4}
+            value={bio}
             onChange={(e) => setBio(e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-4 resize-none"
           />
@@ -69,15 +110,26 @@ export default function Home() {
           <input
             type="text"
             placeholder="Skills (comma separated)"
+            value={skills}
             onChange={(e) => setSkills(e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-6"
           />
 
+          {error && (
+            <p
+              role="alert"
+              className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+            >
+              {error}
+            </p>
+          )}
+
           <button
             onClick={handleSubmit}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition-colors"
+            disabled={submitting}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
           >
-            Create Portfolio
+            {submitting ? "Creating…" : "Create Portfolio"}
           </button>
         </div>
       </main>

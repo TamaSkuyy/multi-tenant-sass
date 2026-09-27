@@ -1,11 +1,42 @@
 import type { Metadata } from "next";
 
-async function getTenant(slug: string) {
-  const res = await fetch(`http://localhost:8080/api/tenants/${slug}`, {
-    cache: "no-store",
-  });
+// SSR jalan di Node — pakai API_URL; fallback ke NEXT_PUBLIC_API_URL.
+// Samakan dengan PORT di ../../../api/.env
+const API_URL =
+  process.env.API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8080";
 
-  return res.json();
+type TenantData = {
+  tenant?: {
+    name: string;
+    bio?: string;
+    slug: string;
+    skills?: string[] | null;
+    avatarUrl?: string;
+  };
+  template?: {
+    config?: {
+      theme?: { primaryColor?: string };
+      sections?: Record<string, boolean>;
+    };
+  };
+};
+
+async function getTenant(slug: string): Promise<TenantData | null> {
+  try {
+    const res = await fetch(
+      `${API_URL}/api/tenants/${encodeURIComponent(slug)}`,
+      { cache: "no-store" },
+    );
+
+    if (!res.ok) return null;
+
+    return (await res.json()) as TenantData;
+  } catch {
+    // API tidak terjangkau → tampilkan halaman "not found", jangan crash.
+    return null;
+  }
 }
 
 export async function generateMetadata({
@@ -14,7 +45,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const tenant = await getTenant(slug);
+  const tenant = (await getTenant(slug))?.tenant;
 
   if (!tenant) {
     return {
@@ -79,7 +110,7 @@ export default async function TenantPage({
     ...(template?.config?.sections ?? {}),
   };
 
-  const avatarUrl = tenant.avatarUrl as string | undefined;
+  const avatarUrl = tenant.avatarUrl;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100">
@@ -199,7 +230,7 @@ export default async function TenantPage({
             Skills
           </h2>
           <div className="flex flex-wrap gap-3 justify-center">
-            {tenant.skills.map((skill: string) => (
+            {(tenant.skills ?? []).map((skill) => (
               <span
                 key={skill}
                 className="px-4 py-2 rounded-full text-sm font-semibold bg-white/5 backdrop-blur-sm hover:-translate-y-0.5 hover:shadow-lg transition-all"

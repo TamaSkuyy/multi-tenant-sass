@@ -15,6 +15,10 @@
     "Tenant": {
       "model": "Tenant",
       "namespace": "public"
+    },
+    "User": {
+      "model": "User",
+      "namespace": "public"
     }
   },
   "domain": {
@@ -47,6 +51,20 @@
                   "kind": "scalar"
                 }
               },
+              "published": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "slug": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "tenantSlug": {
                 "nullable": false,
                 "type": {
@@ -60,9 +78,36 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
+                }
               }
             },
-            "relations": {},
+            "relations": {
+              "tenant": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "tenantSlug"
+                  ],
+                  "targetFields": [
+                    "slug"
+                  ]
+                },
+                "to": {
+                  "model": "Tenant",
+                  "namespace": "public"
+                }
+              }
+            },
             "storage": {
               "fields": {
                 "content": {
@@ -74,11 +119,20 @@
                 "id": {
                   "column": "id"
                 },
+                "published": {
+                  "column": "published"
+                },
+                "slug": {
+                  "column": "slug"
+                },
                 "tenantSlug": {
                   "column": "tenantSlug"
                 },
                 "title": {
                   "column": "title"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
                 }
               },
               "namespaceId": "public",
@@ -109,7 +163,23 @@
                 }
               }
             },
-            "relations": {},
+            "relations": {
+              "tenants": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "templateId"
+                  ]
+                },
+                "to": {
+                  "model": "Tenant",
+                  "namespace": "public"
+                }
+              }
+            },
             "storage": {
               "fields": {
                 "config": {
@@ -128,6 +198,13 @@
           },
           "Tenant": {
             "fields": {
+              "avatarUrl": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "bio": {
                 "nullable": false,
                 "type": {
@@ -159,6 +236,13 @@
                   "kind": "scalar"
                 }
               },
+              "ownerId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "skills": {
                 "many": true,
                 "nullable": true,
@@ -182,9 +266,60 @@
                 }
               }
             },
-            "relations": {},
+            "relations": {
+              "owner": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "ownerId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "posts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "slug"
+                  ],
+                  "targetFields": [
+                    "tenantSlug"
+                  ]
+                },
+                "to": {
+                  "model": "Post",
+                  "namespace": "public"
+                }
+              },
+              "template": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "templateId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Template",
+                  "namespace": "public"
+                }
+              }
+            },
             "storage": {
               "fields": {
+                "avatarUrl": {
+                  "column": "avatarUrl"
+                },
                 "bio": {
                   "column": "bio"
                 },
@@ -196,6 +331,9 @@
                 },
                 "name": {
                   "column": "name"
+                },
+                "ownerId": {
+                  "column": "ownerId"
                 },
                 "skills": {
                   "column": "skills"
@@ -209,6 +347,76 @@
               },
               "namespaceId": "public",
               "table": "Tenant"
+            }
+          },
+          "User": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 3
+                  }
+                }
+              },
+              "email": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "tenants": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "ownerId"
+                  ]
+                },
+                "to": {
+                  "model": "Tenant",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "email": {
+                  "column": "email"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "name": {
+                  "column": "name"
+                }
+              },
+              "namespaceId": "public",
+              "table": "User"
             }
           }
         }
@@ -244,6 +452,20 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "published": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "slug": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
                 "tenantSlug": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -253,10 +475,46 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "nativeType": "timestamp",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 3
+                  }
                 }
               },
-              "foreignKeys": [],
-              "indexes": [],
+              "foreignKeys": [
+                {
+                  "onDelete": "restrict",
+                  "onUpdate": "cascade",
+                  "source": {
+                    "columns": [
+                      "tenantSlug"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Post"
+                  },
+                  "target": {
+                    "columns": [
+                      "slug"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Tenant"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "tenantSlug",
+                    "slug"
+                  ],
+                  "name": "Post_tenantSlug_slug_key",
+                  "unique": true
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -283,7 +541,15 @@
                 }
               },
               "foreignKeys": [],
-              "indexes": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "name"
+                  ],
+                  "name": "Template_name_key",
+                  "unique": true
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -293,6 +559,11 @@
             },
             "Tenant": {
               "columns": {
+                "avatarUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "bio": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -320,6 +591,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "ownerId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "skills": {
                   "codecId": "pg/text@1",
                   "many": true,
@@ -340,13 +616,97 @@
                   "nullable": false
                 }
               },
-              "foreignKeys": [],
+              "foreignKeys": [
+                {
+                  "onDelete": "restrict",
+                  "onUpdate": "cascade",
+                  "source": {
+                    "columns": [
+                      "templateId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Tenant"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Template"
+                  }
+                },
+                {
+                  "onDelete": "setNull",
+                  "onUpdate": "cascade",
+                  "source": {
+                    "columns": [
+                      "ownerId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Tenant"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "User"
+                  }
+                }
+              ],
               "indexes": [
                 {
                   "columns": [
                     "slug"
                   ],
                   "name": "Tenant_slug_key",
+                  "unique": true
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "User": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamp-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamp",
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 3
+                  }
+                },
+                "email": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "email"
+                  ],
+                  "name": "User_email_key",
                   "unique": true
                 }
               ],
@@ -363,10 +723,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "4bf484be671bbec93b3bd0fbf09c874bbc1c6cf95ae6ea60df8f0e3ea477d30f"
+    "storageHash": "8390746ee68d6604909d2e7fe42f00e588fcccd4f298fa903f648c89013c73c7"
   },
   "execution": {
-    "executionHash": "b93aebf64aca61595b40a7e46bf69ee31f1cfaffd89a77d6748a71261e152193",
+    "executionHash": "d2e475d2a90084895990cf6140e260b3143ba4afdefd136006db030f1837b383",
     "mutations": {
       "defaults": [
         {
@@ -376,6 +736,21 @@
           },
           "ref": {
             "column": "id",
+            "namespace": "public",
+            "table": "Post"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "plainDateTimeNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
             "namespace": "public",
             "table": "Post"
           }
@@ -400,6 +775,17 @@
             "column": "id",
             "namespace": "public",
             "table": "Tenant"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "User"
           }
         }
       ]

@@ -7,26 +7,47 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Pemilik akun. Dipakai mulai Fase 1 (auth), jadi relasinya sudah disiapkan.
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  tenants   Tenant[]
+}
+
 model Tenant {
   id         String   @id @default(uuid())
   slug       String   @unique
   name       String
   bio        String
   skills     String[]
+  avatarUrl  String?
   templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+  ownerId    String?
+  owner      User?    @relation(fields: [ownerId], references: [id])
+  posts      Post[]
   createdAt  DateTime @default(now())
 }
 
 model Template {
-  id     String @id @default(uuid())
-  name   String
-  config Json
+  id      String   @id @default(uuid())
+  name    String   @unique
+  config  Json
+  tenants Tenant[]
 }
 
 model Post {
   id         String   @id @default(uuid())
   title      String
   content    String
+  slug       String
+  published  Boolean  @default(false)
   tenantSlug String
+  tenant     Tenant   @relation(fields: [tenantSlug], references: [slug])
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantSlug, slug])
 }

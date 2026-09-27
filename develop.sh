@@ -26,6 +26,9 @@ COMPOSE=(docker compose -f "$COMPOSE_FILE")
 
 API_PORT_DEFAULT=8080
 CLIENT_PORT="${CLIENT_PORT:-3000}"
+# Override lewat environment: `API_PORT=8090 ./develop.sh` (tanpa mengubah api/.env)
+API_PORT_OVERRIDE="${API_PORT:-}"
+SERVERS_STARTED=0
 
 RUN_SEED=1
 RUN_INSTALL=1
@@ -152,17 +155,26 @@ if [[ "$RUN_DB" == 1 || "$RUN_API" == 1 ]]; then
 
   ENV_PORT="$(grep -E '^PORT=' "$API_DIR/.env" | head -1 | cut -d= -f2- | tr -d "\"'" | xargs || true)"
 
-  if [[ -z "$ENV_PORT" ]]; then
+  if [[ -n "$API_PORT_OVERRIDE" ]]; then
+    API_PORT="$API_PORT_OVERRIDE"
+    ok "override dari environment: API_PORT=$API_PORT"
+  elif [[ -z "$ENV_PORT" ]]; then
     printf '\nPORT=%s\n' "$API_PORT_DEFAULT" >> "$API_DIR/.env"
     ok "api/.env: PORT=$API_PORT_DEFAULT ditambahkan."
   else
     API_PORT="$ENV_PORT"
   fi
 
-  [[ "$API_PORT" =~ ^[0-9]+$ ]] || die "PORT di api/.env tidak valid: '$API_PORT'"
+  [[ "$API_PORT" =~ ^[0-9]+$ ]] || die "PORT API tidak valid: '$API_PORT'"
 
   if [[ "$RUN_CLIENT" == 1 && "$API_PORT" == "$CLIENT_PORT" ]]; then
     die "PORT API ($API_PORT) bentrok dengan port client ($CLIENT_PORT). Jalankan mis. CLIENT_PORT=3001 ./develop.sh"
+  fi
+
+  if port_open "$API_PORT"; then
+    warn "Port $API_PORT sudah dipakai proses lain (mungkin dev server lama)."
+    warn "Hentikan dulu, atau jalankan dengan port lain: API_PORT=8090 ./develop.sh"
+    die "Port $API_PORT tidak bebas."
   fi
 
   info "API akan jalan di :$API_PORT"
@@ -173,6 +185,12 @@ if [[ "$RUN_CLIENT" == 1 ]]; then
   step "Environment client"
 
   CLIENT_ENV="$CLIENT_DIR/.env.local"
+
+  if [[ -f "$CLIENT_ENV" ]] && grep -q "Dibuat otomatis oleh develop.sh" "$CLIENT_ENV" && ! grep -q "localhost:${API_PORT}\"" "$CLIENT_ENV"; then
+    # File ini hasil generate kita sendiri, dan port API berubah → segarkan.
+    info "client/.env.local: port API berubah, file digenerate ulang."
+    rm -f "$CLIENT_ENV"
+  fi
 
   if [[ -f "$CLIENT_ENV" ]]; then
     ok "client/.env.local sudah ada (tidak ditimpa)."
@@ -277,6 +295,18 @@ cleanup() {
   if [[ -n "$TAIL_PID" ]]; then
     kill "$TAIL_PID" 2>/dev/null || true
   fi
+
+  # Kadang ada anak proses (next/tsx) yang lolos dari kill_tree. Jangan diam —
+  # beri tahu port mana yang masih ditempati beserta cara membersihkannya.
+  if [[ "$SERVERS_STARTED" == 1 ]]; then
+    local port
+    for port in "$API_PORT" "$CLIENT_PORT"; do
+      if port_open "$port"; then
+        warn "Port $port masih dipakai proses lain — bersihkan dengan: pkill -f 'tsx watch src/index.ts'; pkill -f 'next dev'"
+      fi
+    done
+  fi
+
   ok "Semua proses dihentikan. Log lengkap: .dev-logs/"
   exit 0
 }
@@ -304,10 +334,12 @@ if [[ "$RUN_API" == 1 || "$RUN_CLIENT" == 1 ]]; then
   : > "$CLIENT_LOG"
 
   trap cleanup EXIT INT TERM
+  SERVERS_STARTED=1
 
   if [[ "$RUN_API" == 1 ]]; then
     info "API    → http://localhost:${API_PORT}   (log: .dev-logs/api.log)"
-    ( cd "$API_DIR" && exec npm run dev ) >"$API_LOG" 2>&1 &
+    # PORT di environment menang atas api/.env (dotenv tidak menimpa env).
+    ( cd "$API_DIR" && PORT="$API_PORT" exec npm run dev ) >"$API_LOG" 2>&1 &
     PIDS+=("$!")
   fi
 

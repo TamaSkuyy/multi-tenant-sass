@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/multi_tenant_sass
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: multi_tenant_sass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runtime aplikasi butuh Node 26 (Temporal dipakai codec DateTime).
+      # Node 24 cukup untuk typecheck/lint/migrate — tidak ada query yang
+      # membaca kolom DateTime di job ini.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            client/package-lock.json
+
+      - name: Install API dependencies
+        working-directory: api
+        run: npm ci --no-audit --no-fund
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck & lint
+        run: npm run check
+
+      - name: Apply migrations & verify contract
+        working-directory: api
+        run: |
+          npx prisma db migrate --db "$DATABASE_URL"
+          npx prisma db verify --db "$DATABASE_URL"

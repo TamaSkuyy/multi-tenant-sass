@@ -1,0 +1,12 @@
+{
+  "name": "multi-tenant-sass",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant portfolio SaaS — API Express + Prisma 8, client Next.js 16",
+  "scripts": {
+    "dev": "./develop.sh",
+    "check": "npm --prefix api run typecheck && npm --prefix client run typecheck && npm --prefix client run lint",
+    "seed": "npm --prefix api run seed",
+    "contract:emit": "npm --prefix api run contract:emit"
+  }
+}

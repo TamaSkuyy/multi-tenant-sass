@@ -51,8 +51,11 @@ export default function Home() {
       }
 
       // Arahkan ke subdomain tenant pada origin yang sama — port mengikuti
-      // halaman ini, jadi tidak ada port yang di-hardcode.
+      // halaman ini, jadi tidak ada port yang di-hardcode. Subdomain = origin
+      // berbeda, jadi navigasi penuh memang disengaja (bukan navigasi internal
+      // Next.js) — aturan lint di bawah false-positive untuk kasus ini.
       const { protocol, hostname, port } = window.location;
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = `${protocol}//${data.slug}.${hostname}${port ? `:${port}` : ""}`;
     } catch {
       setError(

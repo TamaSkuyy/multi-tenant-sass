@@ -1,30 +1,25 @@
 import type { Request, Response } from "express";
 
 import { db } from "../prisma/db";
+import { createTenantSchema } from "../schemas/tenant.schema";
 
 export async function createTenant(req: Request, res: Response) {
-  // req.body bisa undefined (request tanpa body) di Express 5 — jangan
-  // langsung didestrukturisasi.
-  const { name, bio, skills } = (req.body ?? {}) as {
-    name?: unknown;
-    bio?: unknown;
-    skills?: unknown;
-  };
+  const parsed = createTenantSchema.safeParse(req.body ?? {});
 
-  if (
-    typeof name !== "string" ||
-    name.trim() === "" ||
-    typeof bio !== "string" ||
-    bio.trim() === "" ||
-    !Array.isArray(skills) ||
-    !skills.every((skill): skill is string => typeof skill === "string")
-  ) {
-    return res.status(400).json({ error: "Missing or invalid required fields" });
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Data tenant tidak valid",
+      details: parsed.error.issues.map((issue) => ({
+        field: issue.path.join(".") || "(body)",
+        message: issue.message,
+      })),
+    });
   }
+
+  const { name, bio, skills } = parsed.data;
 
   // "Budi Santoso!" → "budi-santoso"
   const slug = name
-    .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -47,7 +42,7 @@ export async function createTenant(req: Request, res: Response) {
 
   const tenant = await db.orm.public.Tenant.create({
     slug,
-    name: name.trim(),
+    name,
     bio,
     skills,
     templateId: template.id,

@@ -1,0 +1,494 @@
+[
+  {
+    "id": "table.User",
+    "label": "Create table \"User\"",
+    "summary": "Creates table \"User\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "User"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"User\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"User\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"User\"",
+        "sql": "CREATE TABLE \"public\".\"User\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"User\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"User\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Post.published",
+    "label": "Add column \"published\" to \"Post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "published",
+        "table": "Post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"published\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "published"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"published\"",
+        "sql": "ALTER TABLE \"public\".\"Post\" ADD COLUMN \"published\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"published\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "published"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Tenant.avatarUrl",
+    "label": "Add column \"avatarUrl\" to \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "avatarUrl",
+        "table": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"avatarUrl\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Tenant",
+          "avatarUrl"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"avatarUrl\"",
+        "sql": "ALTER TABLE \"public\".\"Tenant\" ADD COLUMN \"avatarUrl\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"avatarUrl\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Tenant",
+          "avatarUrl"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Tenant.ownerId",
+    "label": "Add column \"ownerId\" to \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "ownerId",
+        "table": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"ownerId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Tenant",
+          "ownerId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"ownerId\"",
+        "sql": "ALTER TABLE \"public\".\"Tenant\" ADD COLUMN \"ownerId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"ownerId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Tenant",
+          "ownerId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Post.slug",
+    "label": "Add column \"slug\" to \"Post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "slug",
+        "table": "Post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"slug\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "slug"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"slug\"",
+        "sql": "ALTER TABLE \"public\".\"Post\" ADD COLUMN \"slug\" text NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"slug\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "slug"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Post.updatedAt",
+    "label": "Add column \"updatedAt\" to \"Post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "Post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "updatedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Post\" ADD COLUMN \"updatedAt\" timestamp(3) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Post",
+          "updatedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Post.Post_tenantSlug_slug_key",
+    "label": "Create index \"Post_tenantSlug_slug_key\" on \"Post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Post_tenantSlug_slug_key",
+        "table": "Post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Post_tenantSlug_slug_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Post_tenantSlug_slug_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Post_tenantSlug_slug_key\"",
+        "sql": "CREATE UNIQUE INDEX \"Post_tenantSlug_slug_key\" ON \"public\".\"Post\" (\"tenantSlug\", \"slug\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Post_tenantSlug_slug_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Post_tenantSlug_slug_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Template.Template_name_key",
+    "label": "Create index \"Template_name_key\" on \"Template\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Template_name_key",
+        "table": "Template"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Template_name_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Template_name_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Template_name_key\"",
+        "sql": "CREATE UNIQUE INDEX \"Template_name_key\" ON \"public\".\"Template\" (\"name\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Template_name_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Template_name_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.User.User_email_key",
+    "label": "Create index \"User_email_key\" on \"User\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "User_email_key",
+        "table": "User"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"User_email_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"User_email_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"User_email_key\"",
+        "sql": "CREATE UNIQUE INDEX \"User_email_key\" ON \"public\".\"User\" (\"email\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"User_email_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"User_email_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Post.Post_tenantSlug_fkey",
+    "label": "Add foreign key \"Post_tenantSlug_fkey\" on \"Post\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Post_tenantSlug_fkey",
+        "table": "Post"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Post_tenantSlug_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Post_tenantSlug_fkey",
+          "public",
+          "\"public\".\"Post\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Post_tenantSlug_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Post\"\nADD CONSTRAINT \"Post_tenantSlug_fkey\"\nFOREIGN KEY (\"tenantSlug\")\nREFERENCES \"public\".\"Tenant\" (\"slug\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Post_tenantSlug_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Post_tenantSlug_fkey",
+          "public",
+          "\"public\".\"Post\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Tenant.Tenant_templateId_fkey",
+    "label": "Add foreign key \"Tenant_templateId_fkey\" on \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Tenant_templateId_fkey",
+        "table": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Tenant_templateId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tenant_templateId_fkey",
+          "public",
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Tenant_templateId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Tenant\"\nADD CONSTRAINT \"Tenant_templateId_fkey\"\nFOREIGN KEY (\"templateId\")\nREFERENCES \"public\".\"Template\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Tenant_templateId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tenant_templateId_fkey",
+          "public",
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Tenant.Tenant_ownerId_fkey",
+    "label": "Add foreign key \"Tenant_ownerId_fkey\" on \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Tenant_ownerId_fkey",
+        "table": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Tenant_ownerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tenant_ownerId_fkey",
+          "public",
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Tenant_ownerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Tenant\"\nADD CONSTRAINT \"Tenant_ownerId_fkey\"\nFOREIGN KEY (\"ownerId\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE SET NULL\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Tenant_ownerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tenant_ownerId_fkey",
+          "public",
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ]
+  }
+]

@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import tenantRoutes from "./routes/tenant.routes";
 
@@ -7,8 +8,49 @@ import { db } from "./prisma/db";
 
 const app = express();
 
-// ---------------------------------------------------------------- middleware
-app.use(cors());
+// ---------------------------------------------------------------- keamanan
+// Header keamanan standar. CORP dibuka ke cross-origin karena API ini memang
+// dipanggil dari origin lain (localhost:3000 dan subdomain <slug>.localhost).
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
+
+/**
+ * CORS whitelist. `*` mewakili SATU label host, jadi
+ * `http://*.localhost:3000` mengizinkan `budi.localhost:3000` (subdomain
+ * tenant) tetapi tidak `localhost:3000.evil.com`.
+ */
+const originPatterns = (
+  process.env.CLIENT_ORIGINS ?? "http://localhost:3000,http://*.localhost:3000"
+)
+  .split(",")
+  .map((pattern) => pattern.trim())
+  .filter(Boolean)
+  .map(
+    (pattern) =>
+      new RegExp(
+        `^${pattern
+          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, "[^.]+")}$`,
+      ),
+  );
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Tanpa Origin (curl, server-to-server) → izinkan; browser selalu kirim.
+      if (!origin || originPatterns.some((pattern) => pattern.test(origin))) {
+        callback(null, true);
+        return;
+      }
+      // Origin di luar whitelist: tanpa header CORS, browser yang memblokir.
+      callback(null, false);
+    },
+  }),
+);
+
 app.use(express.json());
 
 //---------------------------------------------------------------- routes

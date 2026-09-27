@@ -27,13 +27,17 @@ graph LR
 
 ---
 
-## Fase 0 — Prasyarat (wajib dulu, semua fitur di bawah bergantung ke sini)
+## Fase 0 — Prasyarat ✅ SELESAI
 
-### [ ] 0.1 Tambah relasi / foreign key
+> Diterapkan lewat migration `migrations/app/20260927T1240_phase_0_relations_and_fields`
+> (12 operasi): tabel `User`, 5 kolom baru, 3 unique index, 3 foreign key.
+> `db verify` lolos; `npm run check` hijau; sudah diuji end-to-end lewat `./develop.sh`.
+
+### [x] 0.1 Tambah relasi / foreign key
 
 **Masalah:** DB sekarang **0 foreign key**. `Tenant.templateId` dan `Post.tenantSlug` cuma string — tenant bisa menunjuk template yang tidak ada, dan blog post bisa yatim.
 
-- [ ] Di `schema.prisma`:
+- [x] Di `schema.prisma`:
 
   ```prisma
   model Tenant {
@@ -48,50 +52,57 @@ graph LR
   }
   ```
 
-- [ ] `npx prisma contract emit` → `npx prisma migration plan --name add-relations` → `db migrate`
-- [ ] Cek: `db verify` lolos + `\d "Post"` di psql menunjukkan FK
+- [x] `npx prisma contract emit` → `npx prisma migration plan` → `db migrate`
+- [x] Cek: 3 FK nyata di Postgres — `Post_tenantSlug_fkey`, `Tenant_templateId_fkey`, `Tenant_ownerId_fkey`; insert post dengan slug tenant palsu ditolak `23503`
 
 **Keputusan:** FK ke `Tenant.slug` berarti **slug harus immutable** (tidak boleh di-rename). Itu konsisten dengan subdomain routing, jadi aman — tapi kalau nanti mau slug bisa berubah, FK harus pindah ke `Tenant.id`.
 
 **Acceptance:** `prisma db verify` OK, `select count(*) from pg_constraint where contype='f'` > 0.
 Estimasi: **S**
 
-### [ ] 0.2 Pagar minimum: typecheck + lint di satu perintah
+### [x] 0.2 Pagar minimum: typecheck + lint di satu perintah
 
-- [ ] Script root `package.json` (baru) atau `Makefile`:
+- [x] Script root `package.json` (baru):
 
   ```json
   { "scripts": {
-      "check": "npm --prefix api run typecheck && npm --prefix client run lint && npm --prefix client exec tsc -- --noEmit"
+      "check": "npm --prefix api run typecheck && npm --prefix client run typecheck && npm --prefix client run lint"
   } }
   ```
 
-- [ ] Jalankan sebelum tiap commit; nanti dipakai CI (GitHub Actions) di Fase 6
-- [ ] Tambah `.github/workflows/ci.yml`: install → `check` → `prisma db verify` terhadap Postgres service container
+- [x] Jalankan sebelum tiap commit (sudah terbukti hijau)
+- [x] `.github/workflows/ci.yml`: install api+client → `npm run check` → `prisma db migrate` + `db verify` terhadap service Postgres 16
 
 **Acceptance:** `npm run check` hijau di mesin bersih.
 Estimasi: **S**
 
-### [ ] 0.3 Hardening endpoint tenant yang sudah ada
+### [x] 0.3 Hardening endpoint tenant yang sudah ada
 
 **Masalah:** `POST /api/tenants` masih terbuka untuk siapa pun, tanpa rate limit, tanpa validasi schema, dan `cors()` menerima semua origin.
 
-- [ ] Tambah `helmet` + `express-rate-limit` di `api/src/app.ts` (khusus `POST /api/tenants`)
-- [ ] Validasi body pakai `zod` (ganti cast manual di `tenant.controller.ts`)
-- [ ] CORS whitelist: `CLIENT_ORIGIN=http://localhost:3000` + `http://*.localhost:3000` (subdomain tenant ikut memanggil API)
-- [ ] Setelah Fase 1: endpoint ini jadi butuh login, "create tenant" pindah ke onboarding
+- [x] `helmet` + `express-rate-limit` (20 tenant/jam per IP; store masih in-memory → ganti Redis kalau multi-instance)
+- [x] Validasi body pakai `zod` (`api/src/schemas/tenant.schema.ts`) → 400 + `details[]` per field
+- [x] CORS whitelist lewat `CLIENT_ORIGINS` di `api/.env` (`*` = satu label host, jadi `http://*.localhost:3000` mencakup subdomain tenant)
+- [ ] Setelah Fase 1: endpoint ini jadi butuh login, "create tenant" pindah ke onboarding → **dipindah ke Fase 1**
 
 **Acceptance:** `curl` body invalid → 400 dengan detail field; origin asing → ditolak.
 Estimasi: **S**
 
-### [ ] 0.4 Tambah field yang dibutuhkan fase berikutnya (sekali migration)
+### [x] 0.4 Tambah field yang dibutuhkan fase berikutnya (sekali migration)
 
-- [ ] `Tenant.avatarUrl String?` (dipakai client sekarang, tapi belum ada di schema — selalu jatuh ke inisial)
-- [ ] `Post.published Boolean @default(false)`, `Post.slug String`, `Post.updatedAt DateTime @updatedAt`
-- [ ] `@@unique([tenantSlug, slug])` di `Post`
-- [ ] `Tenant.ownerId String?` + `User` model (dipakai Fase 1)
+- [x] `Tenant.avatarUrl String?` (client sudah membacanya — sekarang tidak selalu jatuh ke inisial)
+- [x] `Post.published Boolean @default(false)`, `Post.slug String`, `Post.updatedAt DateTime @updatedAt`
+- [x] `@@unique([tenantSlug, slug])` di `Post`
+- [x] `Tenant.ownerId String?` + model `User` (dipakai Fase 1)
 
-**Acceptance:** `contract emit` + `migration plan --name tenant-post-fields` lolos, client `tsc` masih hijau.
+**Catatan implementasi:** planner merender `dataTransform`/backfill untuk `Post.slug` &
+`Post.updatedAt` (NOT NULL tanpa default) dengan `placeholder(...)`. Backfill itu tidak
+diperlukan — kolomnya belum pernah ada dan `Post` kosong di semua environment — jadi
+migration-nya diedit untuk menambah kedua kolom langsung sebagai NOT NULL, lalu
+self-emit (`node migrations/app/.../migration.ts`). Untuk backfill sungguhan di masa
+depan, isi placeholder dengan query-plan dari `postgres<End>({ contractJson: endContract })`.
+
+**Acceptance:** `contract emit` + `migration plan` lolos, client `tsc` masih hijau.
 Estimasi: **M**
 
 ---
